@@ -14,6 +14,7 @@ import (
 type Profile struct {
 	ID        	uuid.UUID	`json:"id"`
 	CreatedAt 	time.Time 	`json:"created_at"`
+	Owner		uuid.UUID	`json:"owner"`
 	FirstName 	string    	`json:"first_name"`
 	LastName  	string    	`json:"last_name"`
 	Version   	int       	`json:"-"`
@@ -30,11 +31,11 @@ type ProfileModel struct {
 
 func (m ProfileModel) Insert(profile *Profile) error {
 	query := `
-        INSERT INTO profiles (first_name, last_name) 
-        VALUES ($1, $2)
+        INSERT INTO profiles (owner, first_name, last_name) 
+        VALUES ($1, $2, $3)
         RETURNING id, created_at, version`
 
-	args := []interface{}{profile.FirstName, profile.LastName}
+	args := []interface{}{profile.Owner, profile.FirstName, profile.LastName}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
