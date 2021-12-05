@@ -23,7 +23,7 @@ services:
       - db
     build:
       context: .
-    hostname: userhost
+    hostname: profilehost
     networks:
       - servicenet
     ports:
