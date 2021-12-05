@@ -139,31 +139,36 @@ func (app *Application) metrics(next http.Handler) http.Handler {
 	})
 }
 
+// Function to check a token as an authentication of the user
 func (app *Application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get an Authorization header from HTTP request
+		// and if not available then just return to next function
 		w.Header().Add("Vary", "Authorization")
-
 		authorizationHeader := r.Header.Get("Authorization")
-
 		if authorizationHeader == "" {
 			r = app.contextSetUser(r, dataUser.AnonymousUser)
 			next.ServeHTTP(w, r)
 			return
 		}
 
+		// Split a header and get a Bearer part
 		headerParts := strings.Split(authorizationHeader, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
 
+		// Get a token
 		tokenString := headerParts[1]
+
+		//  Define clain from the API user
 		claims := &apiUser.Claims{}
 
+		// Parse a token with the secret
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte(app.Config.Auth.Secret), nil
 		})
-
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
 				app.invalidCredentialsResponse(w, r)
@@ -173,11 +178,13 @@ func (app *Application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
+		//  Check if the token is valid
 		if !token.Valid {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
 
+		// Get a user by ID from the Claim token
 		user, err := app.Models.Users.GetByID(claims.ID)
 		if err != nil {
 			switch {
@@ -189,8 +196,26 @@ func (app *Application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
+		// Put the user inside a context to use it on the next function
 		r = app.contextSetUser(r, user)
 
+		// Run the next function
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Function to check if the user has authentication
+func (app *Application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		// If the user doesn't have an authentication then send an error
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+
+		// Run the next function
 		next.ServeHTTP(w, r)
 	})
 }
