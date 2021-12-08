@@ -15,7 +15,7 @@ func (app *Application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodGet, "/api/health", app.healthcheckHandler)
 	router.HandlerFunc(http.MethodPost, "/api/profiles", app.requireAuthenticatedUser(app.createProfileHandler))
-	router.HandlerFunc(http.MethodPost, "/api/addresses", app.createAddressHandler)
+	router.HandlerFunc(http.MethodPost, "/api/addresses", app.requireAuthenticatedUser(app.createAddressHandler))
 
 	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
 

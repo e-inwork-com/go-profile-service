@@ -14,6 +14,7 @@ import (
 type Address struct {
 	ID        	uuid.UUID	`json:"id"`
 	CreatedAt 	time.Time 	`json:"created_at"`
+	Owner		uuid.UUID	`json:"owner"`
 	Street 		string    	`json:"street"`
 	PostCode  	string    	`json:"post_code"`
 	City  		string    	`json:"city"`
@@ -34,11 +35,11 @@ type AddressModel struct {
 
 func (m AddressModel) Insert(address *Address) error {
 	query := `
-        INSERT INTO addresses (street, post_code, city, country_code) 
-        VALUES ($1, $2,$3, $4)
+        INSERT INTO addresses (owner, street, post_code, city, country_code) 
+        VALUES ($1, $2,$3, $4, $5)
         RETURNING id, created_at, version`
 
-	args := []interface{}{address.Street, address.PostCode, address.City, address.CountryCode}
+	args := []interface{}{address.Owner, address.Street, address.PostCode, address.City, address.CountryCode}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
