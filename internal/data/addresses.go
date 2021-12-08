@@ -85,6 +85,49 @@ func (m AddressModel) GetByID(id uuid.UUID) (*Address, error) {
 	return &address, nil
 }
 
+// GetByOwner Function to get a Address by Owner
+func (m AddressModel) GetByOwner(owner uuid.UUID) (*Address, error) {
+	// Select query by owner
+	query := `
+        SELECT id, created_at, owner, street, post_code, city, country_code, version
+        FROM addresses
+        WHERE owner = $1`
+
+	// Define a Address variable
+	var address Address
+
+	// Create a context background
+	// to use it with a query to database
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Query Address by owner to the database,
+	// and the assign the row result to the address variable
+	err := m.DB.QueryRowContext(ctx, query, owner).Scan(
+		&address.ID,
+		&address.CreatedAt,
+		&address.Owner,
+		&address.Street,
+		&address.PostCode,
+		&address.City,
+		&address.CountryCode,
+		&address.Version,
+	)
+
+	// Check error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	// Return the result
+	return &address, nil
+}
+
 func (m AddressModel) Update(address *Address) error {
 	query := `
         UPDATE addresses 
