@@ -13,7 +13,7 @@ func (app *Application) createAddressHandler(w http.ResponseWriter, r *http.Requ
 		Street 		string    	`json:"street"`
 		PostCode  	string    	`json:"post_code"`
 		City  		string    	`json:"city"`
-		CountryCode string    	`json:"country_code"`
+		CountryCode	string    	`json:"country_code"`
 	}
 
 	// Assign data from HTTP request to the Address inout
