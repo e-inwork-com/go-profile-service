@@ -28,11 +28,11 @@ func (app *Application) createAddressHandler(w http.ResponseWriter, r *http.Requ
 
 	// Set input to the Address record
 	address := &data.Address{
-		Owner: 		owner.ID,
-		Street:		input.Street,
-		PostCode:	input.PostCode,
-		City:		input.City,
-		CountryCode:input.CountryCode,
+		Owner: 			owner.ID,
+		Street:			input.Street,
+		PostCode:		input.PostCode,
+		City:			input.City,
+		CountryCode:	input.CountryCode,
 	}
 
 	// Validate Address data
