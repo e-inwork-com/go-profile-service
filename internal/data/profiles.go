@@ -79,6 +79,47 @@ func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	return &profile, nil
 }
 
+// GetByOwner Function to get a Profile by Owner
+func (m ProfileModel) GetByOwner(owner uuid.UUID) (*Profile, error) {
+	// Select query by owner
+	query := `
+        SELECT id, created_at, owner, first_name, last_name, version
+        FROM profiles
+        WHERE owner = $1`
+
+	// Define a Profile variable
+	var profile Profile
+
+	// Create a context background
+	// to use it with a query to database
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Query Profile by owner to the database,
+	// and the assign the row result to the profile variable
+	err := m.DB.QueryRowContext(ctx, query, owner).Scan(
+		&profile.ID,
+		&profile.CreatedAt,
+		&profile.Owner,
+		&profile.FirstName,
+		&profile.LastName,
+		&profile.Version,
+	)
+
+	// Check error
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	// Return the result
+	return &profile, nil
+}
+
 func (m ProfileModel) Update(profile *Profile) error {
 	query := `
         UPDATE profiles 

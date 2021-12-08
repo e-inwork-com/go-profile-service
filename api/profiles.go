@@ -1,12 +1,14 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
 	"github.com/e-inwork-com/golang-profile-microservice/internal/validator"
 )
 
+// Function to create a Profile
 func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Profile input
 	var input struct {
@@ -54,3 +56,30 @@ func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// Function to get a Profile of the current User
+func (app *Application) getProfileHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the current user as the owner of the Profile
+	owner := app.contextGetUser(r)
+
+	// Get profile by owner
+	profile, err := app.Models.Profiles.GetByOwner(owner.ID)
+
+	// Check error
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	// Send a request response
+	err = app.writeJSON(w, http.StatusOK, envelope{"profile": profile}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
