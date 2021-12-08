@@ -204,8 +204,8 @@ func (app *Application) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// Function to check if the user has authentication
-func (app *Application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+// Function to check if the user has an authentication
+func (app *Application) requireAuthenticated(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := app.contextGetUser(r)
 
