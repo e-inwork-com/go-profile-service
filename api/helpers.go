@@ -12,15 +12,20 @@ import (
 
 	"github.com/e-inwork-com/golang-profile-microservice/internal/validator"
 
+	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (app *Application) readIDParam(r *http.Request) (int64, error) {
+// readIDParam get the request has an ID param with valid UUID
+func (app *Application) readIDParam(r *http.Request) (uuid.UUID, error) {
+	// Get param from request
 	params := httprouter.ParamsFromContext(r.Context())
 
-	id, err := strconv.ParseInt(params.ByName("id"), 10, 64)
-	if err != nil || id < 1 {
-		return 0, errors.New("invalid id parameter")
+	// Get ID from the request params,
+	// and parse it to the valid UUID
+	id, err := uuid.Parse(params.ByName("id"))
+	if err != nil {
+		return uuid.Nil, errors.New("invalid id parameter")
 	}
 
 	return id, nil

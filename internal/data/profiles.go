@@ -50,7 +50,7 @@ func (m ProfileModel) Insert(profile *Profile) error {
 
 func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	query := `
-        SELECT id, created_at, first_name, last_name, version
+        SELECT id, created_at, owner, first_name, last_name, version
         FROM profiles
         WHERE id = $1`
 
@@ -62,6 +62,7 @@ func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&profile.ID,
 		&profile.CreatedAt,
+		&profile.Owner,
 		&profile.FirstName,
 		&profile.LastName,
 		&profile.Version,
@@ -120,13 +121,16 @@ func (m ProfileModel) GetByOwner(owner uuid.UUID) (*Profile, error) {
 	return &profile, nil
 }
 
+// Update function to update the Profile
 func (m ProfileModel) Update(profile *Profile) error {
+	// SQL Update
 	query := `
         UPDATE profiles 
         SET first_name = $1, last_name = $2, version = version + 1
-        WHERE id = $3, AND version = $4
+        WHERE id = $3 AND version = $4
         RETURNING version`
 
+	// Assign arguments
 	args := []interface{}{
 		profile.FirstName,
 		profile.LastName,
@@ -134,9 +138,11 @@ func (m ProfileModel) Update(profile *Profile) error {
 		profile.Version,
 	}
 
+	// Create a context of the SQL Update
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	// Run SQL Update
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&profile.Version)
 	if err != nil {
 		switch {
