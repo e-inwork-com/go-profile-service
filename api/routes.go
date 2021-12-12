@@ -19,6 +19,7 @@ func (app *Application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPatch, "/api/profiles/:id", app.requireAuthenticated(app.patchProfileHandler))
 	router.HandlerFunc(http.MethodPost, "/api/addresses", app.requireAuthenticated(app.createAddressHandler))
 	router.HandlerFunc(http.MethodGet, "/api/address", app.requireAuthenticated(app.getAddressHandler))
+	router.HandlerFunc(http.MethodPatch, "/api/addresses/:id", app.requireAuthenticated(app.patchAddressHandler))
 
 	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
 

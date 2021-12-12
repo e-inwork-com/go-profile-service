@@ -54,7 +54,7 @@ func (m AddressModel) Insert(address *Address) error {
 
 func (m AddressModel) GetByID(id uuid.UUID) (*Address, error) {
 	query := `
-        SELECT id, created_at, street, post_code, city, country_code, version
+        SELECT id, created_at, owner, street, post_code, city, country_code, version
         FROM addresses
         WHERE id = $1`
 
@@ -66,6 +66,7 @@ func (m AddressModel) GetByID(id uuid.UUID) (*Address, error) {
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&address.ID,
 		&address.CreatedAt,
+		&address.Owner,
 		&address.Street,
 		&address.PostCode,
 		&address.City,
@@ -132,7 +133,7 @@ func (m AddressModel) Update(address *Address) error {
 	query := `
         UPDATE addresses 
         SET street = $1, post_code = $2, city = $3, country_code = $4, version = version + 1
-        WHERE id = $5, AND version = $6
+        WHERE id = $5 AND version = $6
         RETURNING version`
 
 	args := []interface{}{
