@@ -3,11 +3,15 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
+	"github.com/e-inwork-com/golang-profile-microservice/internal/jsonlog"
 
 	apiUser "github.com/e-inwork-com/golang-user-microservice/api"
 	dataUser "github.com/e-inwork-com/golang-user-microservice/pkg/data"
@@ -18,24 +22,25 @@ import (
 )
 
 func TestRoutes(t *testing.T) {
-	// Server Setup
+	// CockroachDB Test Server Setup
 	tsDB, err := testserver.NewTestServer()
 	assert.Nil(t, err)
 	urlDB := tsDB.PGURL()
 
-	var cfg apiUser.Config
-	cfg.Db.Dsn = urlDB.String()
-	cfg.Auth.Secret = "secret"
-	cfg.Db.MaxOpenConn = 25
-	cfg.Db.MaxIdleConn = 25
-	cfg.Db.MaxIdleTime = "15m"
-	cfg.Limiter.Enabled = true
-	cfg.Limiter.Rps = 2
-	cfg.Limiter.Burst = 4
+	// User Microservice
+	var cfgUser apiUser.Config
+	cfgUser.Db.Dsn = urlDB.String()
+	cfgUser.Auth.Secret = "secret"
+	cfgUser.Db.MaxOpenConn = 25
+	cfgUser.Db.MaxIdleConn = 25
+	cfgUser.Db.MaxIdleTime = "15m"
+	cfgUser.Limiter.Enabled = true
+	cfgUser.Limiter.Rps = 2
+	cfgUser.Limiter.Burst = 4
 
-	logger := jsonLogUser.New(os.Stdout, jsonLogUser.LevelInfo)
+	loggerUser := jsonLogUser.New(os.Stdout, jsonLogUser.LevelInfo)
 
-	db, err := apiUser.OpenDB(cfg)
+	db, err := apiUser.OpenDB(cfgUser)
 	assert.Nil(t, err)
 	defer db.Close()
 
@@ -72,18 +77,19 @@ func TestRoutes(t *testing.T) {
 		"version integer NOT NULL DEFAULT 1);")
 	assert.Nil(t, err)
 
-	app := &apiUser.Application{
-		Config: cfg,
-		Logger: logger,
+	appUser := &apiUser.Application{
+		Config: cfgUser,
+		Logger: loggerUser,
 		Models: dataUser.InitModels(db),
 	}
 
-	ts := httptest.NewTLSServer(app.Routes())
-	defer ts.Close()
+	tsUser := httptest.NewTLSServer(appUser.Routes())
+	defer tsUser.Close()
 
-	// Register
-	user := `{"name": "Test", "email": "test@example.com", "password": "pa55word"}`
-	res, err := ts.Client().Post(ts.URL+"/api/users", "application/json", bytes.NewReader([]byte(user)))
+	// Register an user
+	email := "test@example.com"
+	user := fmt.Sprintf(`{"name": "Test", "email": "%v", "password": "pa55word"}`, email)
+	res, err := tsUser.Client().Post(tsUser.URL+"/api/users", "application/json", bytes.NewReader([]byte(user)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusAccepted)
 
@@ -91,14 +97,14 @@ func TestRoutes(t *testing.T) {
 	body, err := ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
 
-	var userResult map[string]dataUser.User
-	err = json.Unmarshal(body, &userResult)
+	var mUser map[string]dataUser.User
+	err = json.Unmarshal(body, &mUser)
 	assert.Nil(t, err)
-	assert.Equal(t, userResult["user"].Email, "test@example.com")
+	assert.Equal(t, mUser["user"].Email, email)
 
-	// User Token Authentication Sign In
-	user = `{"email": "test@example.com", "password": "pa55word"}`
-	res, err = ts.Client().Post(ts.URL+"/api/authentication", "application/json", bytes.NewReader([]byte(user)))
+	// User sign in to get a token
+	login := `{"email": "test@example.com", "password": "pa55word"}`
+	res, err = tsUser.Client().Post(tsUser.URL+"/api/authentication", "application/json", bytes.NewReader([]byte(login)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusCreated)
 
@@ -111,6 +117,50 @@ func TestRoutes(t *testing.T) {
 	}
 	var authResult authType
 	err = json.Unmarshal(body, &authResult)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, authResult.Token)
+
+	// Profile Microservice
+	var cfgProfile Config
+	cfgProfile.Db.Dsn = urlDB.String()
+	cfgProfile.Auth.Secret = "secret"
+	cfgProfile.Db.MaxOpenConn = 25
+	cfgProfile.Db.MaxIdleConn = 25
+	cfgProfile.Db.MaxIdleTime = "15m"
+	cfgProfile.Limiter.Enabled = true
+	cfgProfile.Limiter.Rps = 2
+	cfgProfile.Limiter.Burst = 4
+
+	loggerProfile := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+
+	appProfile := Application{
+		Config: cfgProfile,
+		Logger: loggerProfile,
+		Models: data.InitModels(db),
+	}
+
+	tsProfile := httptest.NewTLSServer(appProfile.routes())
+	defer tsProfile.Close()
+
+	// Create Profile with the Authorization JSON Web token from the User Microservice
+	firstName := "Jon"
+	profile := fmt.Sprintf(`{"first_name": "%v", "last_name": "Doe"}`, firstName)
+	req, _ := http.NewRequest("POST", tsProfile.URL+"/api/profiles", bytes.NewReader([]byte(profile)))
+
+	bearer := fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusAccepted)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	var mProfile map[string]data.Profile
+	err = json.Unmarshal(body, &mProfile)
+	assert.Nil(t, err)
+	assert.Equal(t, mProfile["profile"].FirstName, firstName)
 }

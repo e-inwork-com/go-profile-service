@@ -119,11 +119,11 @@ func (app *Application) enableCORS(next http.Handler) http.Handler {
 }
 
 func (app *Application) metrics(next http.Handler) http.Handler {
-	totalRequestsReceived := expvar.NewInt("total_requests_received")
-	totalResponsesSent := expvar.NewInt("total_responses_sent")
-	totalProcessingTimeMicroseconds := expvar.NewInt("total_processing_time_μs")
+	totalRequestsReceived := expvar.NewInt("profile_total_requests_received")
+	totalResponsesSent := expvar.NewInt("profile_total_responses_sent")
+	totalProcessingTimeMicroseconds := expvar.NewInt("profile_total_processing_time_μs")
 
-	totalResponsesSentByStatus := expvar.NewMap("total_responses_sent_by_status")
+	totalResponsesSentByStatus := expvar.NewMap("profile_total_responses_sent_by_status")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
