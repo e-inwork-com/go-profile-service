@@ -6,6 +6,11 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Test environment of the CockroachDB
+/api/goroutine_dump
+/api/heap_profiler
+/api/inflight_trace_dump
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
