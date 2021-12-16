@@ -158,7 +158,7 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Send back the Profile to the request response
-	err = app.writeJSON(w, http.StatusOK, envelope{"movie": profile}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"profile": profile}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

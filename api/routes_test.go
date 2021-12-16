@@ -163,4 +163,65 @@ func TestRoutes(t *testing.T) {
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
 	assert.Equal(t, mProfile["profile"].FirstName, firstName)
+
+	// Patch Profile with the Authorization JSON Web token from the User Microservice
+	firstName = "Test"
+	profile = fmt.Sprintf(`{"first_name": "%v"}`, firstName)
+	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/profiles/"+mProfile["profile"].ID.String(), bytes.NewReader([]byte(profile)))
+
+	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	err = json.Unmarshal(body, &mProfile)
+	assert.Nil(t, err)
+	assert.Equal(t, mProfile["profile"].FirstName, firstName)
+
+	// Create Address with the Authorization JSON Web token from the User Microservice
+	street := "Kenduruan"
+	address := fmt.Sprintf(`{"street": "%v", "post_code": "089", "city": "Tuban", "country_code": "ID"}`, street)
+	req, _ = http.NewRequest("POST", tsProfile.URL+"/api/addresses", bytes.NewReader([]byte(address)))
+
+	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusAccepted)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	var mAddress map[string]data.Address
+	err = json.Unmarshal(body, &mAddress)
+	assert.Nil(t, err)
+	assert.Equal(t, mAddress["address"].Street, street)
+
+	// Patch Address with the Authorization JSON Web token from the User Microservice
+	street 	= "Test"
+	address = fmt.Sprintf(`{"street": "%v"}`, street)
+	req, _ 	= http.NewRequest("PATCH", tsProfile.URL+"/api/addresses/"+mAddress["address"].ID.String(), bytes.NewReader([]byte(address)))
+
+	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	err = json.Unmarshal(body, &mAddress)
+	assert.Nil(t, err)
+	assert.Equal(t, mAddress["address"].Street, street)
 }

@@ -173,7 +173,7 @@ func (app *Application) patchAddressHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Send back the Address to the request response
-	err = app.writeJSON(w, http.StatusOK, envelope{"movie": address}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"address": address}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
