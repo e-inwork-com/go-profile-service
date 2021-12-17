@@ -112,7 +112,7 @@ func TestRoutes(t *testing.T) {
 	body, err = ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
 
-	type authType struct{
+	type authType struct {
 		Token string `json:"token"`
 	}
 	var authResult authType
@@ -206,9 +206,9 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, mAddress["address"].Street, street)
 
 	// Patch Address with the Authorization JSON Web token from the User Microservice
-	street 	= "Test"
+	street = "Test"
 	address = fmt.Sprintf(`{"street": "%v"}`, street)
-	req, _ 	= http.NewRequest("PATCH", tsProfile.URL+"/api/addresses/"+mAddress["address"].ID.String(), bytes.NewReader([]byte(address)))
+	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/addresses/"+mAddress["address"].ID.String(), bytes.NewReader([]byte(address)))
 
 	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
 	req.Header.Set("Authorization", bearer)
