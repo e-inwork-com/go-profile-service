@@ -130,7 +130,7 @@ func TestRoutes(t *testing.T) {
 	cfgProfile.Db.MaxIdleTime = "15m"
 	cfgProfile.Limiter.Enabled = true
 	cfgProfile.Limiter.Rps = 2
-	cfgProfile.Limiter.Burst = 4
+	cfgProfile.Limiter.Burst = 6
 
 	loggerProfile := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
@@ -160,6 +160,24 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 
 	var mProfile map[string]data.Profile
+	err = json.Unmarshal(body, &mProfile)
+	assert.Nil(t, err)
+	assert.Equal(t, mProfile["profile"].FirstName, firstName)
+
+	// Get Profile with the Authorization JSON Web token from the User Microservice
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profile", nil)
+
+	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
 	assert.Equal(t, mProfile["profile"].FirstName, firstName)
@@ -201,6 +219,24 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 
 	var mAddress map[string]data.Address
+	err = json.Unmarshal(body, &mAddress)
+	assert.Nil(t, err)
+	assert.Equal(t, mAddress["address"].Street, street)
+
+	// Get Address with the Authorization JSON Web token from the User Microservice
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/address", nil)
+
+	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
+	req.Header.Set("Authorization", bearer)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
 	err = json.Unmarshal(body, &mAddress)
 	assert.Nil(t, err)
 	assert.Equal(t, mAddress["address"].Street, street)
