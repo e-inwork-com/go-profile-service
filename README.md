@@ -26,5 +26,5 @@ curl -H "Authorization: Bearer {token}" -X GET http://localhost:4001/api/profile
 curl -F "profile_picture=@/Users/.../go-profile-service/api/test/profile.png" -H "Authorization: Bearer {token}"  -X PATCH http://localhost:4001/api/profiles/{id}
 ```
 
-### Open a profile picture from the browser:
+### Open a profile picture in the browser:
 http://localhost:4001/api/profiles/pictures/{profilePicture}
