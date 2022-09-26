@@ -2,41 +2,87 @@ package api
 
 import (
 	"errors"
+	"fmt"
+	"github.com/e-inwork-com/go-profile-service/internal/data"
+	"github.com/e-inwork-com/go-profile-service/internal/validator"
+	"io"
 	"net/http"
-
-	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
-	"github.com/e-inwork-com/golang-profile-microservice/internal/validator"
+	"os"
+	"path/filepath"
 )
 
 // Function to create a Profile
 func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Request) {
-	// Profile input
-	var input struct {
-		FirstName   string `json:"first_name"`
-		LastName    string `json:"last_name"`
-	}
-
-	// Assign data from HTTP request to the Profile inout
-	err := app.readJSON(w, r, &input)
+	// Read a file attachment
+	file, fileHeader, err := r.FormFile("profile_picture")
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
+	defer file.Close()
 
-	// Get the current user as the owner of the new Profile
-	owner := app.contextGetUser(r)
+	// Get the current user
+	user := app.contextGetUser(r)
 
-	// Set input to the Profile record
+	// Set profile picture
+	profilePicture := fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+
+	// Set Profile
 	profile := &data.Profile{
-		Owner: 		owner.ID,
-		FirstName:	input.FirstName,
-		LastName:	input.LastName,
+		ProfileUser: 	user.ID,
+		ProfilePicture:	profilePicture,
 	}
 
-	// Validate Profile data
+	// Validate Profile
 	v := validator.New()
 	if data.ValidateProfile(v, profile); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// Check type of file
+	buff := make([]byte, 512)
+	_, err = file.Read(buff)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	filetype := http.DetectContentType(buff)
+	if filetype != "image/jpeg" && filetype != "image/png" {
+		http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
+		return
+	}
+
+	// Read a file from the beginning offset
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Create an uploading folder if it doesn't
+	// already exist
+	err = os.MkdirAll("../uploads", os.ModePerm)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Create a new file in the uploads directory
+	dst, err := os.Create(fmt.Sprintf("../uploads/%s", profilePicture))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	defer dst.Close()
+
+	// Copy the uploaded file to the filesystem
+	// at the specified destination
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -51,19 +97,19 @@ func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Send a Profile data as response of the HTTP request
-	err = app.writeJSON(w, http.StatusAccepted, envelope{"profile": profile}, nil)
+	err = app.writeJSON(w, http.StatusCreated, envelope{"profile": profile}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
-// Function to get a Profile of the current User
+// getProfileHandler function to get a Profile of the current user
 func (app *Application) getProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the current user as the owner of the Profile
-	owner := app.contextGetUser(r)
+	user := app.contextGetUser(r)
 
-	// Get profile by owner
-	profile, err := app.Models.Profiles.GetByOwner(owner.ID)
+	// Get profile by user
+	profile, err := app.Models.Profiles.GetByProfileUser(user.ID)
 
 	// Check error
 	if err != nil {
@@ -105,45 +151,94 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get the current user
-	owner := app.contextGetUser(r)
+	user := app.contextGetUser(r)
 
-	// Check if the Profile has a related to the owner
-	// Only the Owner of the Profile can update the own profile
-	if profile.Owner != owner.ID {
+	// Check if the Profile has a related to the current user
+	// Only the owner of the Profile can update the own profile
+	if profile.ProfileUser != user.ID {
 		app.notPermittedResponse(w, r)
 		return
 	}
 
-	// Profile input
-	var input struct {
-		FirstName   *string `json:"first_name"`
-		LastName    *string `json:"last_name"`
-	}
-
-	// Read JSON from input
-	err = app.readJSON(w, r, &input)
+	// Read a file attachment
+	file, fileHeader, err := r.FormFile("profile_picture")
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
+	defer file.Close()
 
-	// Assign input FirstName if exist
-	if input.FirstName != nil {
-		profile.FirstName = *input.FirstName
-	}
+	// Set profile picture
+	profilePicture := fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
 
-	// Assign input LastName if exist
-	if input.LastName != nil {
-		profile.LastName = *input.LastName
+	// Set a new Profile
+	newProfile := &data.Profile{
+		ProfilePicture:	profilePicture,
 	}
 
 	// Create a Validator
 	v := validator.New()
 	// Check if the Profile is valid
-	if data.ValidateProfile(v, profile); !v.Valid() {
+	if data.ValidateProfile(v, newProfile); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+
+	// Check type of file
+	buff := make([]byte, 512)
+	_, err = file.Read(buff)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	filetype := http.DetectContentType(buff)
+	if filetype != "image/jpeg" && filetype != "image/png" {
+		http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
+		return
+	}
+
+	// Read a file from the beginning offset
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Create an uploading folder if it doesn't
+	// already exist
+	err = os.MkdirAll("../uploads", os.ModePerm)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Delete the old profile picture
+	err = os.Remove(fmt.Sprintf("../uploads/%s", profile.ProfilePicture))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Create a new file in the uploads directory
+	dst, err := os.Create(fmt.Sprintf("../uploads/%s", profilePicture))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	defer dst.Close()
+
+	// Copy the uploaded file to the filesystem
+	// at the specified destination
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Update the old profile picture with a new one
+	profile.ProfilePicture = newProfile.ProfilePicture
 
 	// Update the Profile
 	err = app.Models.Profiles.Update(profile)

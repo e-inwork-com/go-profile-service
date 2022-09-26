@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
-	"github.com/e-inwork-com/golang-profile-microservice/internal/jsonlog"
+	"github.com/e-inwork-com/go-profile-service/internal/data"
+	"github.com/e-inwork-com/go-profile-service/internal/jsonlog"
 
 	_ "github.com/lib/pq"
 )

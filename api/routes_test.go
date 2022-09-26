@@ -4,18 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/e-inwork-com/go-profile-service/internal/data"
+	"github.com/e-inwork-com/go-profile-service/internal/jsonlog"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
-	"github.com/e-inwork-com/golang-profile-microservice/internal/jsonlog"
-
-	apiUser "github.com/e-inwork-com/golang-user-microservice/api"
-	dataUser "github.com/e-inwork-com/golang-user-microservice/pkg/data"
-	jsonLogUser "github.com/e-inwork-com/golang-user-microservice/pkg/jsonlog"
+	apiUser "github.com/e-inwork-com/go-user-service/api"
+	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
+	jsonLogUser "github.com/e-inwork-com/go-user-service/pkg/jsonlog"
 
 	"github.com/cockroachdb/cockroach-go/v2/testserver"
 	"github.com/stretchr/testify/assert"
@@ -48,9 +50,10 @@ func TestRoutes(t *testing.T) {
 		"CREATE TABLE IF NOT EXISTS users (" +
 		"id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid()," +
 		"created_at timestamp(0) with time zone NOT NULL DEFAULT NOW()," +
-		"name text NOT NULL," +
 		"email text UNIQUE NOT NULL," +
 		"password_hash bytea NOT NULL," +
+		"first_name char varying(100) NOT NULL," +
+		"last_name char varying(100) NOT NULL," +
 		"activated bool NOT NULL DEFAULT false," +
 		"version integer NOT NULL DEFAULT 1);")
 	assert.Nil(t, err)
@@ -59,21 +62,8 @@ func TestRoutes(t *testing.T) {
 		"CREATE TABLE IF NOT EXISTS profiles (" +
 		"id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid()," +
 		"created_at timestamp(0) with time zone NOT NULL DEFAULT NOW()," +
-		"owner UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE UNIQUE," +
-		"first_name text NOT NULL," +
-		"last_name text NOT NULL," +
-		"version integer NOT NULL DEFAULT 1);")
-	assert.Nil(t, err)
-
-	_, err = db.Exec("" +
-		"CREATE TABLE IF NOT EXISTS addresses (" +
-		"id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid()," +
-		"created_at timestamp(0) with time zone NOT NULL DEFAULT NOW()," +
-		"owner UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE UNIQUE," +
-		"street text NOT NULL," +
-		"post_code text NOT NULL," +
-		"city text NOT NULL," +
-		"country_code text NOT NULL," +
+		"profile_user UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE UNIQUE," +
+		"profile_picture char varying(512) NOT NULL," +
 		"version integer NOT NULL DEFAULT 1);")
 	assert.Nil(t, err)
 
@@ -88,7 +78,8 @@ func TestRoutes(t *testing.T) {
 
 	// Register an user
 	email := "test@example.com"
-	user := fmt.Sprintf(`{"name": "Test", "email": "%v", "password": "pa55word"}`, email)
+	password := "pa55word"
+	user := fmt.Sprintf(`{"email": "%v", "password":  "%v", "first_name": "Jon", "last_name": "Doe"}`, email, password)
 	res, err := tsUser.Client().Post(tsUser.URL+"/api/users", "application/json", bytes.NewReader([]byte(user)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusAccepted)
@@ -103,7 +94,7 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, mUser["user"].Email, email)
 
 	// User sign in to get a token
-	login := `{"email": "test@example.com", "password": "pa55word"}`
+	login := fmt.Sprintf(`{"email": "%v", "password":  "%v"}`, email, password)
 	res, err = tsUser.Client().Post(tsUser.URL+"/api/authentication", "application/json", bytes.NewReader([]byte(login)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusCreated)
@@ -143,18 +134,45 @@ func TestRoutes(t *testing.T) {
 	tsProfile := httptest.NewTLSServer(appProfile.routes())
 	defer tsProfile.Close()
 
-	// Create Profile with the Authorization JSON Web token from the User Microservice
-	firstName := "Jon"
-	profile := fmt.Sprintf(`{"first_name": "%v", "last_name": "Doe"}`, firstName)
-	req, _ := http.NewRequest("POST", tsProfile.URL+"/api/profiles", bytes.NewReader([]byte(profile)))
+	// Upload file
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+
+	// this step is very important
+	filename := "./test/profile.jpg"
+	fileWriter, err := bodyWriter.CreateFormFile("profile_picture", filename)
+	if err != nil {
+		fmt.Println("Error writing to buffer")
+	}
+
+	// open file handle
+	fileHandler, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("Error opening file")
+	}
+
+	// Copy file to file handler
+	_, err = io.Copy(fileWriter, fileHandler)
+	if err != nil {
+		fmt.Println("Error copy file")
+	}
+
+	// Put on body
+	contentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	// Create a new profile
+	req, _ := http.NewRequest("POST", tsProfile.URL+"/api/profiles", bodyBuf)
+	req.Header.Add("Content-Type", contentType)
 
 	bearer := fmt.Sprintf("Bearer %v", authResult.Token)
 	req.Header.Set("Authorization", bearer)
 
 	res, err = tsProfile.Client().Do(req)
 	assert.Nil(t, err)
-	assert.Equal(t, res.StatusCode, http.StatusAccepted)
+	assert.Equal(t, res.StatusCode, http.StatusCreated)
 
+	// Read response
 	defer res.Body.Close()
 	body, err = ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
@@ -162,10 +180,10 @@ func TestRoutes(t *testing.T) {
 	var mProfile map[string]data.Profile
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
-	assert.Equal(t, mProfile["profile"].FirstName, firstName)
+	assert.Equal(t, mProfile["profile"].ProfileUser, mUser["user"].ID)
 
-	// Get Profile with the Authorization JSON Web token from the User Microservice
-	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profile", nil)
+	// Get a profile of the current user
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profiles/me", nil)
 
 	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
 	req.Header.Set("Authorization", bearer)
@@ -174,18 +192,41 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusOK)
 
+	// Read response
 	defer res.Body.Close()
 	body, err = ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
 
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
-	assert.Equal(t, mProfile["profile"].FirstName, firstName)
+	assert.Equal(t, mProfile["profile"].ProfileUser, mUser["user"].ID)
 
-	// Patch Profile with the Authorization JSON Web token from the User Microservice
-	firstName = "Test"
-	profile = fmt.Sprintf(`{"first_name": "%v"}`, firstName)
-	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/profiles/"+mProfile["profile"].ID.String(), bytes.NewReader([]byte(profile)))
+	// this step is very important
+	filename = "./test/profile.png"
+	fileWriter, err = bodyWriter.CreateFormFile("profile_picture", filename)
+	if err != nil {
+		fmt.Println("Error writing to buffer")
+	}
+
+	// open file handle
+	fileHandler, err = os.Open(filename)
+	if err != nil {
+		fmt.Println("Error opening file")
+	}
+
+	// Copy file to file handler
+	_, err = io.Copy(fileWriter, fileHandler)
+	if err != nil {
+		fmt.Println("Error copy file")
+	}
+
+	// Put on body
+	contentType = bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	// Patch user profile
+	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/profiles/"+mProfile["profile"].ID.String(), bodyBuf)
+	req.Header.Add("Content-Type", contentType)
 
 	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
 	req.Header.Set("Authorization", bearer)
@@ -194,70 +235,12 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusOK)
 
+	// Read response
 	defer res.Body.Close()
 	body, err = ioutil.ReadAll(res.Body)
 	assert.Nil(t, err)
 
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
-	assert.Equal(t, mProfile["profile"].FirstName, firstName)
-
-	// Create Address with the Authorization JSON Web token from the User Microservice
-	street := "Kenduruan"
-	address := fmt.Sprintf(`{"street": "%v", "post_code": "089", "city": "Tuban", "country_code": "ID"}`, street)
-	req, _ = http.NewRequest("POST", tsProfile.URL+"/api/addresses", bytes.NewReader([]byte(address)))
-
-	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
-	req.Header.Set("Authorization", bearer)
-
-	res, err = tsProfile.Client().Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, res.StatusCode, http.StatusAccepted)
-
-	defer res.Body.Close()
-	body, err = ioutil.ReadAll(res.Body)
-	assert.Nil(t, err)
-
-	var mAddress map[string]data.Address
-	err = json.Unmarshal(body, &mAddress)
-	assert.Nil(t, err)
-	assert.Equal(t, mAddress["address"].Street, street)
-
-	// Get Address with the Authorization JSON Web token from the User Microservice
-	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/address", nil)
-
-	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
-	req.Header.Set("Authorization", bearer)
-
-	res, err = tsProfile.Client().Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, res.StatusCode, http.StatusOK)
-
-	defer res.Body.Close()
-	body, err = ioutil.ReadAll(res.Body)
-	assert.Nil(t, err)
-
-	err = json.Unmarshal(body, &mAddress)
-	assert.Nil(t, err)
-	assert.Equal(t, mAddress["address"].Street, street)
-
-	// Patch Address with the Authorization JSON Web token from the User Microservice
-	street = "Test"
-	address = fmt.Sprintf(`{"street": "%v"}`, street)
-	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/addresses/"+mAddress["address"].ID.String(), bytes.NewReader([]byte(address)))
-
-	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
-	req.Header.Set("Authorization", bearer)
-
-	res, err = tsProfile.Client().Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, res.StatusCode, http.StatusOK)
-
-	defer res.Body.Close()
-	body, err = ioutil.ReadAll(res.Body)
-	assert.Nil(t, err)
-
-	err = json.Unmarshal(body, &mAddress)
-	assert.Nil(t, err)
-	assert.Equal(t, mAddress["address"].Street, street)
+	assert.Equal(t, mProfile["profile"].ProfilePicture, mUser["user"].ID.String() + filepath.Ext(filename))
 }

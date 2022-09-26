@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/e-inwork-com/golang-profile-microservice/internal/data"
-	apiUser "github.com/e-inwork-com/golang-user-microservice/api"
-	dataUser "github.com/e-inwork-com/golang-user-microservice/pkg/data"
+	"github.com/e-inwork-com/go-profile-service/internal/data"
+	apiUser "github.com/e-inwork-com/go-user-service/api"
+	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
 
 	"github.com/felixge/httpsnoop"
 	"github.com/golang-jwt/jwt"

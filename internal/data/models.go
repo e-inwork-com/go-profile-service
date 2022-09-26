@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
-	dataUser "github.com/e-inwork-com/golang-user-microservice/pkg/data"
+	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
 )
 
 var (
@@ -14,14 +14,12 @@ var (
 
 type Models struct {
 	Profiles	ProfileModel
-	Addresses	AddressModel
 	Users 		dataUser.UserModel
 }
 
 func InitModels(db *sql.DB) Models {
 	return Models{
 		Profiles:	ProfileModel{DB: db},
-		Addresses:	AddressModel{DB: db},
 		Users: 		dataUser.UserModel{DB: db},
 	}
 }

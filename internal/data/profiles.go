@@ -6,23 +6,21 @@ import (
 	"errors"
 	"time"
 
-	"github.com/e-inwork-com/golang-profile-microservice/internal/validator"
+	"github.com/e-inwork-com/go-profile-service/internal/validator"
 
 	"github.com/google/uuid"
 )
 
 type Profile struct {
-	ID        	uuid.UUID	`json:"id"`
-	CreatedAt 	time.Time 	`json:"created_at"`
-	Owner		uuid.UUID	`json:"owner"`
-	FirstName 	string    	`json:"first_name"`
-	LastName  	string    	`json:"last_name"`
-	Version   	int       	`json:"-"`
+	ID        		uuid.UUID	`json:"id"`
+	CreatedAt 		time.Time 	`json:"created_at"`
+	ProfileUser		uuid.UUID	`json:"profile_user"`
+	ProfilePicture 	string    	`json:"profile_picture"`
+	Version   		int       	`json:"-"`
 }
 
 func ValidateProfile(v *validator.Validator, profile *Profile) {
-	v.Check(profile.FirstName != "", "first_name", "must be provided")
-	v.Check(profile.LastName != "", "last_name", "must be provided")
+	v.Check(profile.ProfilePicture != "", "profile_picture", "must be provided")
 }
 
 type ProfileModel struct {
@@ -31,11 +29,11 @@ type ProfileModel struct {
 
 func (m ProfileModel) Insert(profile *Profile) error {
 	query := `
-        INSERT INTO profiles (owner, first_name, last_name) 
-        VALUES ($1, $2, $3)
+        INSERT INTO profiles (profile_user, profile_picture) 
+        VALUES ($1, $2)
         RETURNING id, created_at, version`
 
-	args := []interface{}{profile.Owner, profile.FirstName, profile.LastName}
+	args := []interface{}{profile.ProfileUser, profile.ProfilePicture}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -50,7 +48,7 @@ func (m ProfileModel) Insert(profile *Profile) error {
 
 func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	query := `
-        SELECT id, created_at, owner, first_name, last_name, version
+        SELECT id, created_at, profile_user, profile_picture, version
         FROM profiles
         WHERE id = $1`
 
@@ -62,9 +60,8 @@ func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&profile.ID,
 		&profile.CreatedAt,
-		&profile.Owner,
-		&profile.FirstName,
-		&profile.LastName,
+		&profile.ProfileUser,
+		&profile.ProfilePicture,
 		&profile.Version,
 	)
 
@@ -80,13 +77,13 @@ func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	return &profile, nil
 }
 
-// GetByOwner Function to get a Profile by Owner
-func (m ProfileModel) GetByOwner(owner uuid.UUID) (*Profile, error) {
+// GetByProfileUser Function to get a Profile by Owner
+func (m ProfileModel) GetByProfileUser(profileUser uuid.UUID) (*Profile, error) {
 	// Select query by owner
 	query := `
-        SELECT id, created_at, owner, first_name, last_name, version
+        SELECT id, created_at, profile_user, profile_picture, version
         FROM profiles
-        WHERE owner = $1`
+        WHERE profile_user = $1`
 
 	// Define a Profile variable
 	var profile Profile
@@ -98,12 +95,11 @@ func (m ProfileModel) GetByOwner(owner uuid.UUID) (*Profile, error) {
 
 	// Query Profile by owner to the database,
 	// and the assign the row result to the profile variable
-	err := m.DB.QueryRowContext(ctx, query, owner).Scan(
+	err := m.DB.QueryRowContext(ctx, query, profileUser).Scan(
 		&profile.ID,
 		&profile.CreatedAt,
-		&profile.Owner,
-		&profile.FirstName,
-		&profile.LastName,
+		&profile.ProfileUser,
+		&profile.ProfilePicture,
 		&profile.Version,
 	)
 
@@ -126,14 +122,13 @@ func (m ProfileModel) Update(profile *Profile) error {
 	// SQL Update
 	query := `
         UPDATE profiles 
-        SET first_name = $1, last_name = $2, version = version + 1
-        WHERE id = $3 AND version = $4
+        SET profile_picture = $1, version = version + 1
+        WHERE id = $2 AND version = $3
         RETURNING version`
 
 	// Assign arguments
 	args := []interface{}{
-		profile.FirstName,
-		profile.LastName,
+		profile.ProfilePicture,
 		profile.ID,
 		profile.Version,
 	}
