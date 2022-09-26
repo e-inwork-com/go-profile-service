@@ -47,6 +47,8 @@ type Config struct {
 	Cors struct {
 		TrustedOrigins []string
 	}
+
+	Uploads string
 }
 
 type Application struct {

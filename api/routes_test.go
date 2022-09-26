@@ -29,7 +29,7 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 	urlDB := tsDB.PGURL()
 
-	// User Microservice
+	// User Service
 	var cfgUser apiUser.Config
 	cfgUser.Db.Dsn = urlDB.String()
 	cfgUser.Auth.Secret = "secret"
@@ -112,7 +112,7 @@ func TestRoutes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, authResult.Token)
 
-	// Profile Microservice
+	// Profile Service
 	var cfgProfile Config
 	cfgProfile.Db.Dsn = urlDB.String()
 	cfgProfile.Auth.Secret = "secret"
@@ -122,6 +122,7 @@ func TestRoutes(t *testing.T) {
 	cfgProfile.Limiter.Enabled = true
 	cfgProfile.Limiter.Rps = 2
 	cfgProfile.Limiter.Burst = 6
+	cfgProfile.Uploads = "../uploads"
 
 	loggerProfile := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
@@ -243,4 +244,20 @@ func TestRoutes(t *testing.T) {
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
 	assert.Equal(t, mProfile["profile"].ProfilePicture, mUser["user"].ID.String() + filepath.Ext(filename))
+
+	// Get profile picture
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profiles/pictures/"+mProfile["profile"].ProfilePicture, nil)
+
+	res, err = tsProfile.Client().Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+
+	// Read response
+	defer res.Body.Close()
+	body, err = ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	// Check type of file
+	filetype := http.DetectContentType(body)
+	assert.NotEqual(t, filetype, "")
 }

@@ -32,6 +32,21 @@ func (app *Application) readIDParam(r *http.Request) (uuid.UUID, error) {
 	return id, nil
 }
 
+// readFileParam get the request has a file param
+func (app *Application) readFileParam(r *http.Request) (string, error) {
+	// Get param from request
+	params := httprouter.ParamsFromContext(r.Context())
+
+	// Get file from the request params,
+	// and parse it to the valid UUID
+	file := params.ByName("file")
+	if file == "" {
+		return "", errors.New("invalid file parameter")
+	}
+
+	return file, nil
+}
+
 type envelope map[string]interface{}
 
 func (app *Application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {

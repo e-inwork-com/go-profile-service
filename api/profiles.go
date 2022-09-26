@@ -6,6 +6,7 @@ import (
 	"github.com/e-inwork-com/go-profile-service/internal/data"
 	"github.com/e-inwork-com/go-profile-service/internal/validator"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -226,7 +227,6 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-
 	defer dst.Close()
 
 	// Copy the uploaded file to the filesystem
@@ -257,4 +257,28 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+}
+
+
+// getProfilePictureHandler function to get a profile picture
+func (app *Application) getProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
+	// Get file from the request parameters
+	file, err := app.readFileParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	// Read file
+	buffer, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", app.Config.Uploads, file))
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	// Check type of file
+	filetype := http.DetectContentType(buffer)
+
+	w.Header().Set("Content-Type", filetype)
+	w.Write(buffer)
 }

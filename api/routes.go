@@ -17,6 +17,7 @@ func (app *Application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/api/profiles", app.requireAuthenticated(app.createProfileHandler))
 	router.HandlerFunc(http.MethodGet, "/api/profiles/me", app.requireAuthenticated(app.getProfileHandler))
 	router.HandlerFunc(http.MethodPatch, "/api/profiles/:id", app.requireAuthenticated(app.patchProfileHandler))
+	router.HandlerFunc(http.MethodGet, "/api/profiles/pictures/:file", app.getProfilePictureHandler)
 
 	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
 
