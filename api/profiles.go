@@ -64,14 +64,14 @@ func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Requ
 
 	// Create an uploading folder if it doesn't
 	// already exist
-	err = os.MkdirAll("./uploads", os.ModePerm)
+	err = os.MkdirAll(app.Config.Uploads, os.ModePerm)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 
 	// Create a new file in the uploads directory
-	dst, err := os.Create(fmt.Sprintf("./uploads/%s", profilePicture))
+	dst, err := os.Create(fmt.Sprintf("%s/%s", app.Config.Uploads, profilePicture))
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
