@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/e-inwork-com/go-profile-service/internal/data"
@@ -14,24 +15,76 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	apiUser "github.com/e-inwork-com/go-user-service/api"
 	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
 	jsonLogUser "github.com/e-inwork-com/go-user-service/pkg/jsonlog"
 
-	"github.com/cockroachdb/cockroach-go/v2/testserver"
 	"github.com/stretchr/testify/assert"
+
+	_ "github.com/lib/pq"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
+	log "github.com/sirupsen/logrus"
 )
 
-func TestRoutes(t *testing.T) {
-	// CockroachDB Test Server Setup
-	tsDB, err := testserver.NewTestServer()
-	assert.Nil(t, err)
-	urlDB := tsDB.PGURL()
+var db *sql.DB
 
-	// User Service
+func TestRoutes(t *testing.T) {
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		log.Fatalf("Could not construct pool: %s", err)
+	}
+
+	err = pool.Client.Ping()
+	if err != nil {
+		log.Fatalf("Could not connect to Docker: %s", err)
+	}
+
+	// pulls an image, creates a container based on it and runs it
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "postgres",
+		Tag:        "11",
+		Env: []string{
+			"POSTGRES_PASSWORD=postgres",
+			"POSTGRES_USER=postgres",
+			"POSTGRES_DB=postgres",
+			"listen_addresses = '*'",
+		},
+	}, func(config *docker.HostConfig) {
+		// set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
+	})
+	if err != nil {
+		log.Fatalf("Could not start resource: %s", err)
+	}
+
+	hostAndPort := resource.GetHostPort("5432/tcp")
+	databaseUrl := fmt.Sprintf("postgres://postgres:postgres@%s/postgres?sslmode=disable", hostAndPort)
+
+	log.Println("Connecting to database on url: ", databaseUrl)
+
+	// Tell docker to hard kill the container in 120 seconds
+	resource.Expire(120)
+
+	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
+	pool.MaxWait = 120 * time.Second
+	if err = pool.Retry(func() error {
+		db, err = sql.Open("postgres", databaseUrl)
+		if err != nil {
+			return err
+		}
+		return db.Ping()
+	}); err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+
+	// Server Setup
 	var cfgUser apiUser.Config
-	cfgUser.Db.Dsn = urlDB.String()
+	cfgUser.Db.Dsn = databaseUrl
 	cfgUser.Auth.Secret = "secret"
 	cfgUser.Db.MaxOpenConn = 25
 	cfgUser.Db.MaxIdleConn = 25
@@ -45,6 +98,9 @@ func TestRoutes(t *testing.T) {
 	db, err := apiUser.OpenDB(cfgUser)
 	assert.Nil(t, err)
 	defer db.Close()
+
+	_, err = db.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
+	assert.Nil(t, err)
 
 	_, err = db.Exec("" +
 		"CREATE TABLE IF NOT EXISTS users (" +
@@ -114,7 +170,7 @@ func TestRoutes(t *testing.T) {
 
 	// Profile Service
 	var cfgProfile Config
-	cfgProfile.Db.Dsn = urlDB.String()
+	cfgProfile.Db.Dsn = databaseUrl
 	cfgProfile.Auth.Secret = "secret"
 	cfgProfile.Db.MaxOpenConn = 25
 	cfgProfile.Db.MaxIdleConn = 25
@@ -243,7 +299,7 @@ func TestRoutes(t *testing.T) {
 
 	err = json.Unmarshal(body, &mProfile)
 	assert.Nil(t, err)
-	assert.Equal(t, mProfile["profile"].ProfilePicture, mUser["user"].ID.String() + filepath.Ext(filename))
+	assert.Equal(t, mProfile["profile"].ProfilePicture, mUser["user"].ID.String()+filepath.Ext(filename))
 
 	// Get profile picture
 	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profiles/pictures/"+mProfile["profile"].ProfilePicture, nil)
