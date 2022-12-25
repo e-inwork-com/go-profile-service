@@ -14,23 +14,28 @@ import (
 
 // Function to create a Profile
 func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Request) {
+	// Get a profile name
+	profileName := r.FormValue("profile_name")
+
 	// Read a file attachment
 	file, fileHeader, err := r.FormFile("profile_picture")
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
+	if err == nil {
+		defer file.Close()
 	}
-	defer file.Close()
 
 	// Get the current user
 	user := app.contextGetUser(r)
 
 	// Set profile picture
-	profilePicture := fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+	profilePicture := ""
+	if file != nil {
+		profilePicture = fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+	}
 
 	// Set Profile
 	profile := &data.Profile{
 		ProfileUser: 	user.ID,
+		ProfileName: 	profileName,
 		ProfilePicture:	profilePicture,
 	}
 
@@ -42,49 +47,51 @@ func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Check type of file
-	buff := make([]byte, 512)
-	_, err = file.Read(buff)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+	if profilePicture != "" {
+		buff := make([]byte, 512)
+		_, err = file.Read(buff)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	filetype := http.DetectContentType(buff)
-	if filetype != "image/jpeg" && filetype != "image/png" {
-		http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
-		return
-	}
+		filetype := http.DetectContentType(buff)
+		if filetype != "image/jpeg" && filetype != "image/png" {
+			http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
+			return
+		}
 
-	// Read a file from the beginning offset
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Read a file from the beginning offset
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	// Create an uploading folder if it doesn't
-	// already exist
-	err = os.MkdirAll(app.Config.Uploads, os.ModePerm)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Create an uploading folder if it doesn't
+		// already exist
+		err = os.MkdirAll(app.Config.Uploads, os.ModePerm)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	// Create a new file in the uploads directory
-	dst, err := os.Create(fmt.Sprintf("%s/%s", app.Config.Uploads, profilePicture))
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Create a new file in the uploads directory
+		dst, err := os.Create(fmt.Sprintf("%s/%s", app.Config.Uploads, profilePicture))
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	defer dst.Close()
+		defer dst.Close()
 
-	// Copy the uploaded file to the filesystem
-	// at the specified destination
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		// Copy the uploaded file to the filesystem
+		// at the specified destination
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 	}
 
 	// Insert data to Profile
@@ -161,84 +168,91 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Get a profile name
+	profileName := r.FormValue("profile_name")
+
 	// Read a file attachment
 	file, fileHeader, err := r.FormFile("profile_picture")
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
+	if err == nil {
+		defer file.Close()
 	}
-	defer file.Close()
 
 	// Set profile picture
-	profilePicture := fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+	profilePicture := ""
+	if file != nil {
+		profilePicture = fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+	}
 
 	// Set a new Profile
 	newProfile := &data.Profile{
+		ProfileName: profileName,
 		ProfilePicture:	profilePicture,
 	}
 
-	// Create a Validator
-	v := validator.New()
-	// Check if the Profile is valid
-	if data.ValidateProfile(v, newProfile); !v.Valid() {
-		app.failedValidationResponse(w, r, v.Errors)
-		return
-	}
+	if profilePicture != "" {
+		// Check type of file
+		buff := make([]byte, 512)
+		_, err = file.Read(buff)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	// Check type of file
-	buff := make([]byte, 512)
-	_, err = file.Read(buff)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		filetype := http.DetectContentType(buff)
+		if filetype != "image/jpeg" && filetype != "image/png" {
+			http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
+			return
+		}
 
-	filetype := http.DetectContentType(buff)
-	if filetype != "image/jpeg" && filetype != "image/png" {
-		http.Error(w, "Please upload a JPEG or PNG image", http.StatusBadRequest)
-		return
-	}
+		// Read a file from the beginning offset
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	// Read a file from the beginning offset
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Create an uploading folder if it doesn't
+		// already exist
+		err = os.MkdirAll(app.Config.Uploads, os.ModePerm)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	// Create an uploading folder if it doesn't
-	// already exist
-	err = os.MkdirAll("../uploads", os.ModePerm)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Delete the old profile picture
+		if _, err := os.Stat(fmt.Sprintf("%s/%s", app.Config.Uploads, profile.ProfilePicture)); err == nil {
+			err = os.Remove(fmt.Sprintf("%s/%s", app.Config.Uploads, profile.ProfilePicture))
+			if err != nil {
+				app.serverErrorResponse(w, r, err)
+				return
+			}
+		}
 
-	// Delete the old profile picture
-	err = os.Remove(fmt.Sprintf("../uploads/%s", profile.ProfilePicture))
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+		// Create a new file in the uploads directory
+		dst, err := os.Create(fmt.Sprintf("%s/%s", app.Config.Uploads, profilePicture))
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+		defer dst.Close()
 
-	// Create a new file in the uploads directory
-	dst, err := os.Create(fmt.Sprintf("../uploads/%s", profilePicture))
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-	defer dst.Close()
-
-	// Copy the uploaded file to the filesystem
-	// at the specified destination
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		// Copy the uploaded file to the filesystem
+		// at the specified destination
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 	}
 
 	// Update the old profile picture with a new one
-	profile.ProfilePicture = newProfile.ProfilePicture
+	if newProfile.ProfileName != "" {
+		profile.ProfileName = newProfile.ProfileName
+	}
+
+	if newProfile.ProfilePicture != "" {
+		profile.ProfilePicture = newProfile.ProfilePicture
+	}
 
 	// Update the Profile
 	err = app.Models.Profiles.Update(profile)
