@@ -1,20 +1,43 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres
+    hostname: db-service
+    networks:
+      - network-services
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432"
+    volumes:
+      - database-data:/var/lib/postgresql/data/
+  migrate:
+    depends_on:
+      - db
+    image: migrate/migrate
+    networks:
+      - network-services
+    volumes:
+      - ./migrations:/migrations
+    command: -database postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable -path /migrations up
+    restart: on-failure
   user:
     depends_on:
       - db
     build:
       context: user
-    hostname: userhost
+    hostname: go-user-service
     networks:
-      - servicenet
+      - network-services
     ports:
       - "4000:4000"
     security_opt:
       - "seccomp:unconfined"
     environment:
-      - DBDSN=${DBDSN:-postgres://root@dbhost:26257/einwork?sslmode=disable}
+      - DBDSN=${DBDSN:-postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable}
     deploy:
       restart_policy:
         condition: on-failure
@@ -23,34 +46,26 @@ services:
       - db
     build:
       context: .
-    hostname: profilehost
+    hostname: go-profile-service
     networks:
-      - servicenet
+      - network-services
     ports:
       - "4001:4000"
+      - "40000:40000"
     security_opt:
       - "seccomp:unconfined"
+    volumes:
+      - ./uploads:/app/uploads
     environment:
-      - DBDSN=${DBDSN:-postgres://root@dbhost:26257/einwork?sslmode=disable}
+      - DBDSN=${DBDSN:-postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable}
       - UPLOADS=${UPLOADS:-/app/uploads}
     deploy:
       restart_policy:
         condition: on-failure
-  db:
-    image: cockroachdb/cockroach:latest-v20.1
-    hostname: dbhost
-    networks:
-      - servicenet
-    ports:
-      - "26257:26257"
-      - "8080:8080"
-    volumes:
-      - dbdata:/cockroach/cockroach-data
-    command: start-single-node --insecure
 
 volumes:
-  dbdata:
+  database-data:
 
 networks:
-  servicenet:
+  network-services:
     driver: bridge
