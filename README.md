@@ -1,8 +1,9 @@
 # [e-inwork.com](https://e-inwork.com)
 
 ## Getting Started - Golang Profile Microservice
-### Run the Golang Profile Microservice and the [the Golang User Service](https://github.com/e-inwork-com/go-user-service)
-#### The application will run two different microservices in one port 8000 using [Envoy](https://www.envoyproxy.io). For more detail, it can check on [docker-compose.py](https://github.com/e-inwork-com/go-user-service/blob/master/docker-compose.yml).
+### Run the Golang Profile Microservice and the [the Golang User Microservice](https://github.com/e-inwork-com/go-user-service)
+#### This application will run two different microservices in one port 8000 using [Envoy](https://www.envoyproxy.io). 
+More detail, please check [docker-compose.py](https://github.com/e-inwork-com/go-user-service/blob/master/docker-compose.yml).
 1. Install Docker
     - https://docs.docker.com/get-docker/
 2. Git clone this repository to your localhost, and from the terminal run below command:
