@@ -69,6 +69,7 @@ services:
       - network-services
     ports:
       - "${PORT_PROXY:-8000}:8000"
+      - "${PORT_STATS:-8001}:8001"
 
 volumes:
   database-data:
