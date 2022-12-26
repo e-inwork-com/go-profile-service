@@ -137,7 +137,7 @@ func TestRoutes(t *testing.T) {
 	email := "test@example.com"
 	password := "pa55word"
 	user := fmt.Sprintf(`{"email": "%v", "password":  "%v", "first_name": "Jon", "last_name": "Doe"}`, email, password)
-	res, err := tsUser.Client().Post(tsUser.URL+"/api/users", "application/json", bytes.NewReader([]byte(user)))
+	res, err := tsUser.Client().Post(tsUser.URL+"/service/users", "application/json", bytes.NewReader([]byte(user)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusAccepted)
 
@@ -152,7 +152,7 @@ func TestRoutes(t *testing.T) {
 
 	// User sign in to get a token
 	login := fmt.Sprintf(`{"email": "%v", "password":  "%v"}`, email, password)
-	res, err = tsUser.Client().Post(tsUser.URL+"/api/authentication", "application/json", bytes.NewReader([]byte(login)))
+	res, err = tsUser.Client().Post(tsUser.URL+"/service/users/authentication", "application/json", bytes.NewReader([]byte(login)))
 	assert.Nil(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusCreated)
 
@@ -223,7 +223,7 @@ func TestRoutes(t *testing.T) {
 	bodyWriter.Close()
 
 	// Create a new profile
-	req, _ := http.NewRequest("POST", tsProfile.URL+"/api/profiles", bodyBuf)
+	req, _ := http.NewRequest("POST", tsProfile.URL+"/service/profiles", bodyBuf)
 	req.Header.Add("Content-Type", contentType)
 
 	bearer := fmt.Sprintf("Bearer %v", authResult.Token)
@@ -244,7 +244,7 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, mProfile["profile"].ProfileUser, mUser["user"].ID)
 
 	// Get a profile of the current user
-	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profiles/me", nil)
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/service/profiles/me", nil)
 
 	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
 	req.Header.Set("Authorization", bearer)
@@ -286,7 +286,7 @@ func TestRoutes(t *testing.T) {
 	bodyWriter.Close()
 
 	// Patch user profile
-	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/api/profiles/"+mProfile["profile"].ID.String(), bodyBuf)
+	req, _ = http.NewRequest("PATCH", tsProfile.URL+"/service/profiles/"+mProfile["profile"].ID.String(), bodyBuf)
 	req.Header.Add("Content-Type", contentType)
 
 	bearer = fmt.Sprintf("Bearer %v", authResult.Token)
@@ -306,7 +306,7 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, mProfile["profile"].ProfilePicture, mUser["user"].ID.String()+filepath.Ext(filename))
 
 	// Get profile picture
-	req, _ = http.NewRequest("GET", tsProfile.URL+"/api/profiles/pictures/"+mProfile["profile"].ProfilePicture, nil)
+	req, _ = http.NewRequest("GET", tsProfile.URL+"/service/profiles/pictures/"+mProfile["profile"].ProfilePicture, nil)
 
 	res, err = tsProfile.Client().Do(req)
 	assert.Nil(t, err)

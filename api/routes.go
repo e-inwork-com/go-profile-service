@@ -13,13 +13,13 @@ func (app *Application) routes() http.Handler {
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
-	router.HandlerFunc(http.MethodGet, "/api/health", app.healthcheckHandler)
-	router.HandlerFunc(http.MethodPost, "/api/profiles", app.requireAuthenticated(app.createProfileHandler))
-	router.HandlerFunc(http.MethodGet, "/api/profiles/me", app.requireAuthenticated(app.getProfileHandler))
-	router.HandlerFunc(http.MethodPatch, "/api/profiles/:id", app.requireAuthenticated(app.patchProfileHandler))
-	router.HandlerFunc(http.MethodGet, "/api/profiles/pictures/:file", app.getProfilePictureHandler)
+	router.HandlerFunc(http.MethodGet, "/service/profiles/health", app.healthcheckHandler)
+	router.HandlerFunc(http.MethodPost, "/service/profiles", app.requireAuthenticated(app.createProfileHandler))
+	router.HandlerFunc(http.MethodGet, "/service/profiles/me", app.requireAuthenticated(app.getProfileHandler))
+	router.HandlerFunc(http.MethodPatch, "/service/profiles/:id", app.requireAuthenticated(app.patchProfileHandler))
+	router.HandlerFunc(http.MethodGet, "/service/profiles/pictures/:file", app.getProfilePictureHandler)
 
-	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
+	router.Handler(http.MethodGet, "/service/profiles/debug/vars", expvar.Handler())
 
 	return app.metrics(app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(router)))))
 }
