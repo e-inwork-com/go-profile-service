@@ -31,7 +31,7 @@
    ```
 8. Create a profile for current user, you can use any image or use the image on the folder test:
    ```
-   curl -F "profile_picture=@/YourRootFolder/.../go-profile-service/api/test/profile.jpg" -H "Authorization: Bearer $token"  -X POST http://localhost:4001/api/profiles
+   curl -F profile_name="Jon Doe" -F profile_picture=@/YourRootFolder/.../go-profile-service/api/test/profile.jpg -H "Authorization: Bearer $token"  -X POST http://localhost:4001/api/profiles
    ```
 9. The response will show a profile picture, open it on the browser for example like this http://localhost:4001/api/profiles/pictures/926d610c-fd54-450e-aa83-030683227072.jpg
 10. Good luck!
