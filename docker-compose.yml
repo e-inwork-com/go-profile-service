@@ -33,7 +33,7 @@ services:
     networks:
       - network-services
     ports:
-      - "4000:4000"
+      - "4000"
     security_opt:
       - "seccomp:unconfined"
     environment:
@@ -50,8 +50,7 @@ services:
     networks:
       - network-services
     ports:
-      - "4001:4000"
-      - "40000:40000"
+      - "4001"
     security_opt:
       - "seccomp:unconfined"
     volumes:
@@ -62,6 +61,14 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+  front-envoy:
+    build:
+      context: .
+      dockerfile: Dockerfile-frontenvoy
+    networks:
+      - network-services
+    ports:
+      - "${PORT_PROXY:-8000}:8000"
 
 volumes:
   database-data:
