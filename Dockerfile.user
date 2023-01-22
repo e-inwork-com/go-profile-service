@@ -1,0 +1,11 @@
+# Get Golang 1.19
+FROM golang:1.19-alpine
+
+# Get Go User Service
+RUN go install github.com/e-inwork-com/go-user-service/cmd@latest
+
+# Expose port
+EXPOSE 4000
+
+# Run Go User Service
+CMD ["cmd"]
