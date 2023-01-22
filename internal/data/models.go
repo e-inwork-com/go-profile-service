@@ -3,8 +3,6 @@ package data
 import (
 	"database/sql"
 	"errors"
-
-	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
 )
 
 var (
@@ -13,14 +11,13 @@ var (
 )
 
 type Models struct {
-	Profiles	ProfileModel
-	Users 		dataUser.UserModel
+	Profiles ProfileModelInterface
+	Users    UserModelInterface
 }
 
 func InitModels(db *sql.DB) Models {
 	return Models{
-		Profiles:	ProfileModel{DB: db},
-		Users: 		dataUser.UserModel{DB: db},
+		Profiles: ProfileModel{DB: db},
+		Users:    UserModel{DB: db},
 	}
 }
-

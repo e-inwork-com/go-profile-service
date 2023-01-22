@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  db-dev:
+    image: postgres
+    hostname: db-service
+    networks:
+      - network-dev
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./local/dev/progresql-data:/var/lib/postgresql/data/
+
+  migrate-dev:
+    depends_on:
+      - db-dev
+    image: migrate/migrate
+    networks:
+      - network-dev
+    volumes:
+      - ./migrations:/migrations
+    command: -database postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable -path /migrations up
+    restart: on-failure
+
+  user-dev:
+    depends_on:
+      - migrate-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.user
+    hostname: go-user-service
+    networks:
+      - network-dev
+    ports:
+      - "4000"
+    security_opt:
+      - "seccomp:unconfined"
+    environment:
+      - DBDSN=${DBDSN:-postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable}
+      - AUTHSECRET=${AUTHSECRET:-secret}
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  front-envoy-dev:
+    depends_on:
+      - user-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev.frontenvoy
+    networks:
+      - network-dev
+    ports:
+      - "${PORT_PROXY:-8000}:8000"
+      - "${PORT_STATS:-8001}:8001"
+
+networks:
+  network-dev:
+    driver: bridge

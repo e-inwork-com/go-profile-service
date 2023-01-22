@@ -11,13 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProfileModelInterface interface {
+	Insert(profile *Profile) error
+	GetByID(id uuid.UUID) (*Profile, error)
+	GetByProfileUser(profileUser uuid.UUID) (*Profile, error)
+	Update(profile *Profile) error
+}
+
 type Profile struct {
-	ID        		uuid.UUID	`json:"id"`
-	CreatedAt 		time.Time 	`json:"created_at"`
-	ProfileUser		uuid.UUID	`json:"profile_user"`
-	ProfileName 	string    	`json:"profile_name"`
-	ProfilePicture 	string    	`json:"profile_picture"`
-	Version   		int       	`json:"-"`
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	ProfileUser    uuid.UUID `json:"profile_user"`
+	ProfileName    string    `json:"profile_name"`
+	ProfilePicture string    `json:"profile_picture"`
+	Version        int       `json:"-"`
 }
 
 func ValidateProfile(v *validator.Validator, profile *Profile) {
@@ -30,7 +37,7 @@ type ProfileModel struct {
 
 func (m ProfileModel) Insert(profile *Profile) error {
 	query := `
-        INSERT INTO profiles (profile_user, profile_name, profile_picture) 
+        INSERT INTO profiles (profile_user, profile_name, profile_picture)
         VALUES ($1, $2, $3)
         RETURNING id, created_at, version`
 
@@ -124,7 +131,7 @@ func (m ProfileModel) GetByProfileUser(profileUser uuid.UUID) (*Profile, error) 
 func (m ProfileModel) Update(profile *Profile) error {
 	// SQL Update
 	query := `
-        UPDATE profiles 
+        UPDATE profiles
         SET profile_name = $1, profile_picture = $2, version = version + 1
         WHERE id = $3 AND version = $4
         RETURNING version`

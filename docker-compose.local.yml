@@ -1,0 +1,87 @@
+version: '3'
+
+services:
+  db-local:
+    image: postgres
+    hostname: db-service
+    networks:
+      - network-local
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./local/local/progresql-data:/var/lib/postgresql/data/
+
+  migrate-local:
+    depends_on:
+      - db-local
+    image: migrate/migrate
+    networks:
+      - network-local
+    volumes:
+      - ./migrations:/migrations
+    command: -database postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable -path /migrations up
+    restart: on-failure
+
+  user-local:
+    depends_on:
+      - migrate-local
+    build:
+      context: .
+      dockerfile: Dockerfile.user
+    hostname: go-user-service
+    networks:
+      - network-local
+    ports:
+      - "4000"
+    security_opt:
+      - "seccomp:unconfined"
+    environment:
+      - DBDSN=${DBDSN:-postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable}
+      - AUTHSECRET=${AUTHSECRET:-secret}
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  profile-local:
+    depends_on:
+      - user-local
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    hostname: go-profile-service
+    networks:
+      - network-local
+    ports:
+      - "4001"
+    security_opt:
+      - "seccomp:unconfined"
+    volumes:
+      - ./local/local/uploads:/app/uploads
+    environment:
+      - DBDSN=${DBDSN:-postgres://postgres:postgres@db-service:5432/postgres?sslmode=disable}
+      - AUTHSECRET=${AUTHSECRET:-secret}
+      - UPLOADS=${UPLOADS:-/app/uploads}
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  front-envoy-local:
+    depends_on:
+      - user-local
+      - profile-local
+    build:
+      context: .
+      dockerfile: Dockerfile.local.frontenvoy
+    networks:
+      - network-local
+    ports:
+      - "${PORT_PROXY:-8000}:8000"
+      - "${PORT_STATS:-8001}:8001"
+
+networks:
+  network-local:
+    driver: bridge

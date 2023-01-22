@@ -1,9 +1,9 @@
 # [e-inwork.com](https://e-inwork.com)
 
-## Getting Started - Golang Profile Microservice
-### Run the Golang Profile Microservice and the [the Golang User Microservice](https://github.com/e-inwork-com/go-user-service)
-#### This application will run two different microservices in one port 8000 using [Envoy](https://www.envoyproxy.io). 
-More detail, please check [docker-compose.py](https://github.com/e-inwork-com/go-user-service/blob/master/docker-compose.yml).
+## Golang Profile Microservice
+This microservice is responsible for managing the profile data of [the Golang User Microservice](https://github.com/e-inwork-com/go-user-service).
+
+To run both of the microservices, follow the command below:
 1. Install Docker
     - https://docs.docker.com/get-docker/
 2. Git clone this repository to your localhost, and from the terminal run below command:
@@ -16,7 +16,7 @@ More detail, please check [docker-compose.py](https://github.com/e-inwork-com/go
    ```
 4. Run Docker Compose:
    ```
-   docker-compose up -d
+   docker-compose -f docker-compose.local.yml up -d
    ```
 5. Create a user in the User API with CURL command line:
     ```
@@ -32,7 +32,7 @@ More detail, please check [docker-compose.py](https://github.com/e-inwork-com/go
    ```
 8. Create a profile for current user, you can use any image or use the image on the folder test:
    ```
-   curl -F profile_name="Jon Doe" -F profile_picture=@/YourRootFolder/.../go-profile-service/api/test/profile.jpg -H "Authorization: Bearer $token"  -X POST http://localhost:8000/service/profiles
+   curl -F profile_name="Jon Doe" -F profile_picture=@api/test/images/profile.jpg -H "Authorization: Bearer $token"  -X POST http://localhost:8000/service/profiles
    ```
-9. The response will show a profile picture, open it on the browser for example like this http://localhost:8000/service/profiles/pictures/926d610c-fd54-450e-aa83-030683227072.jpg
+9. Copy the value of `profile_picture` from the response. Open it in a browser, such as http://localhost:8000/service/profiles/pictures/926d610c-fd54-450e-aa83-030683227072.jpg
 10. Good luck!

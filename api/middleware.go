@@ -11,14 +11,18 @@ import (
 	"time"
 
 	"github.com/e-inwork-com/go-profile-service/internal/data"
-	apiUser "github.com/e-inwork-com/go-user-service/api"
-	dataUser "github.com/e-inwork-com/go-user-service/pkg/data"
+	"github.com/google/uuid"
 
 	"github.com/felixge/httpsnoop"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 )
+
+type Claims struct {
+	ID uuid.UUID `json:"id"`
+	jwt.RegisteredClaims
+}
 
 func (app *Application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +151,7 @@ func (app *Application) authenticate(next http.Handler) http.Handler {
 		w.Header().Add("Vary", "Authorization")
 		authorizationHeader := r.Header.Get("Authorization")
 		if authorizationHeader == "" {
-			r = app.contextSetUser(r, dataUser.AnonymousUser)
+			r = app.contextSetUser(r, data.AnonymousUser)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -163,7 +167,7 @@ func (app *Application) authenticate(next http.Handler) http.Handler {
 		tokenString := headerParts[1]
 
 		//  Define clain from the API user
-		claims := &apiUser.Claims{}
+		claims := &Claims{}
 
 		// Parse a token with the secret
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
