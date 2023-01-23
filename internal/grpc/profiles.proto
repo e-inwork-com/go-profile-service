@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package profiles;
+
+option go_package = "/profiles";
+
+message Profile {
+  string id = 1;
+}
+
+message ProfileRequest {
+  Profile profileEntry = 1;
+}
+
+message ProfileResponse {
+  string result = 1;
+}
+
+service ProfileService {
+  rpc WriteProfile(ProfileRequest) returns (ProfileResponse);
+}

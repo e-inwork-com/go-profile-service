@@ -27,6 +27,7 @@ func TestE2E(t *testing.T) {
 	cfg.Limiter.Rps = 2
 	cfg.Limiter.Burst = 6
 	cfg.Uploads = "../local/test/uploads"
+	cfg.GRPCProfile = "localhost:5002"
 
 	// Logger
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
@@ -42,7 +43,7 @@ func TestE2E(t *testing.T) {
 	app := Application{
 		Config: cfg,
 		Logger: logger,
-		Models: data.InitModels(db),
+		Models: data.InitModels(db, cfg.GRPCProfile),
 	}
 
 	// API Routes

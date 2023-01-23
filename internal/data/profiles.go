@@ -4,9 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"time"
 
+	profiles "github.com/e-inwork-com/go-profile-service/internal/grpc"
 	"github.com/e-inwork-com/go-profile-service/internal/validator"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/google/uuid"
 )
@@ -32,7 +36,30 @@ func ValidateProfile(v *validator.Validator, profile *Profile) {
 }
 
 type ProfileModel struct {
-	DB *sql.DB
+	DB          *sql.DB
+	GRPCProfile string
+}
+
+// gRPC - Go Profile Indexing Service
+func (m ProfileModel) GRPCProfileIndexing(profile *Profile) {
+	con, err := grpc.Dial(m.GRPCProfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Println(err)
+	}
+	defer con.Close()
+
+	c := profiles.NewProfileServiceClient(con)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err = c.WriteProfile(ctx, &profiles.ProfileRequest{
+		ProfileEntry: &profiles.Profile{
+			Id: profile.ID.String(),
+		},
+	})
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (m ProfileModel) Insert(profile *Profile) error {
@@ -50,6 +77,9 @@ func (m ProfileModel) Insert(profile *Profile) error {
 	if err != nil {
 		return err
 	}
+
+	// Send Data to Go Profile Indexing Service
+	go m.GRPCProfileIndexing(profile)
 
 	return nil
 }
@@ -158,6 +188,9 @@ func (m ProfileModel) Update(profile *Profile) error {
 			return err
 		}
 	}
+
+	// Send Data to Go Profile Indexing Service
+	go m.GRPCProfileIndexing(profile)
 
 	return nil
 }
