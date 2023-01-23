@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	profiles "github.com/e-inwork-com/go-profile-service/internal/grpc"
+	"github.com/e-inwork-com/go-profile-service/internal/profiles"
 	"github.com/e-inwork-com/go-profile-service/internal/validator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
