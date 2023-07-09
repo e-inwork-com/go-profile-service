@@ -36,7 +36,7 @@ services:
     networks:
       - network-test
     ports:
-      - "4000"
+      - "4001:4001"
     security_opt:
       - "seccomp:unconfined"
     environment:
@@ -45,18 +45,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-
-  front-envoy-test:
-    depends_on:
-      - user-test
-    build:
-      context: .
-      dockerfile: Dockerfile.test.frontenvoy
-    networks:
-      - network-test
-    ports:
-      - "${PORT_PROXY:-8000}:8000"
-      - "${PORT_STATS:-8001}:8001"
 
 networks:
   network-test:

@@ -15,11 +15,10 @@ type Models struct {
 	Users    UserModelInterface
 }
 
-func InitModels(db *sql.DB, gRPCProfile string) Models {
+func InitModels(db *sql.DB) Models {
 	return Models{
 		Profiles: ProfileModel{
-			DB:          db,
-			GRPCProfile: gRPCProfile,
+			DB: db,
 		},
 		Users: UserModel{DB: db},
 	}

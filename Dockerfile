@@ -19,7 +19,7 @@ COPY . .
 RUN go build -o profile ./cmd
 
 # Expose 4000
-EXPOSE 4000
+EXPOSE 4002
 
 # Run Application
 CMD ["./profile"]

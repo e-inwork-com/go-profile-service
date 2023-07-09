@@ -36,7 +36,7 @@ services:
     networks:
       - network-dev
     ports:
-      - "4000"
+      - "4001:4001"
     security_opt:
       - "seccomp:unconfined"
     environment:
@@ -45,18 +45,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-
-  front-envoy-dev:
-    depends_on:
-      - user-dev
-    build:
-      context: .
-      dockerfile: Dockerfile.dev.frontenvoy
-    networks:
-      - network-dev
-    ports:
-      - "${PORT_PROXY:-8000}:8000"
-      - "${PORT_STATS:-8001}:8001"
 
 networks:
   network-dev:

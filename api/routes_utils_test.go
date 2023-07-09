@@ -21,7 +21,7 @@ import (
 func testApplication(t *testing.T) *Application {
 	var cfg Config
 	cfg.Auth.Secret = "secret"
-	cfg.Uploads = "../local/test/uploads"
+	cfg.Uploads = "./test/uploads"
 
 	return &Application{
 		Config: cfg,
@@ -113,11 +113,11 @@ func (app *Application) testFormProfile(t *testing.T) (io.Reader, string) {
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
 	// Add team name
-	bodyWriter.WriteField("profile_name", "John Doe")
+	bodyWriter.WriteField("profile_name_t", "John Doe")
 
 	// Add team picture
 	filename := "./test/images/profile.jpg"
-	fileWriter, err := bodyWriter.CreateFormFile("profile_picture", filename)
+	fileWriter, err := bodyWriter.CreateFormFile("profile_picture_s", filename)
 	if err != nil {
 		t.Fatal(err)
 	}

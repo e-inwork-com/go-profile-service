@@ -4,13 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 
-	"github.com/e-inwork-com/go-profile-service/internal/profiles"
 	"github.com/e-inwork-com/go-profile-service/internal/validator"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/google/uuid"
 )
@@ -24,49 +20,26 @@ type ProfileModelInterface interface {
 
 type Profile struct {
 	ID             uuid.UUID `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	ProfileUser    uuid.UUID `json:"profile_user"`
-	ProfileName    string    `json:"profile_name"`
-	ProfilePicture string    `json:"profile_picture"`
+	CreatedAt      time.Time `json:"created_at_dt"`
+	ProfileUser    uuid.UUID `json:"profile_user_s"`
+	ProfileName    string    `json:"profile_name_t"`
+	ProfilePicture string    `json:"profile_picture_s"`
 	Version        int       `json:"-"`
 }
 
 func ValidateProfile(v *validator.Validator, profile *Profile) {
-	v.Check(profile.ProfileName != "", "profile_name", "must be provided")
+	v.Check(profile.ProfileName != "", "profile_name_t", "must be provided")
 }
 
 type ProfileModel struct {
-	DB          *sql.DB
-	GRPCProfile string
-}
-
-// gRPC - Go Profile Indexing Service
-func (m ProfileModel) GRPCProfileIndexing(profile *Profile) {
-	con, err := grpc.Dial(m.GRPCProfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Println(err)
-	}
-	defer con.Close()
-
-	c := profiles.NewProfileServiceClient(con)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err = c.WriteProfile(ctx, &profiles.ProfileRequest{
-		ProfileEntry: &profiles.Profile{
-			Id: profile.ID.String(),
-		},
-	})
-	if err != nil {
-		log.Println(err)
-	}
+	DB *sql.DB
 }
 
 func (m ProfileModel) Insert(profile *Profile) error {
 	query := `
-        INSERT INTO profiles (profile_user, profile_name, profile_picture)
+        INSERT INTO profiles (profile_user_s, profile_name_t, profile_picture_s)
         VALUES ($1, $2, $3)
-        RETURNING id, created_at, version`
+        RETURNING id, created_at_dt, version`
 
 	args := []interface{}{profile.ProfileUser, profile.ProfileName, profile.ProfilePicture}
 
@@ -78,15 +51,12 @@ func (m ProfileModel) Insert(profile *Profile) error {
 		return err
 	}
 
-	// Send Data to Go Profile Indexing Service
-	go m.GRPCProfileIndexing(profile)
-
 	return nil
 }
 
 func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 	query := `
-        SELECT id, created_at, profile_user, profile_name, profile_picture, version
+        SELECT id, created_at_dt, profile_user_s, profile_name_t, profile_picture_s, version
         FROM profiles
         WHERE id = $1`
 
@@ -120,9 +90,9 @@ func (m ProfileModel) GetByID(id uuid.UUID) (*Profile, error) {
 func (m ProfileModel) GetByProfileUser(profileUser uuid.UUID) (*Profile, error) {
 	// Select query by owner
 	query := `
-        SELECT id, created_at, profile_user, profile_name, profile_picture, version
+        SELECT id, created_at_dt, profile_user_s, profile_name_t, profile_picture_s, version
         FROM profiles
-        WHERE profile_user = $1`
+        WHERE profile_user_s = $1`
 
 	// Define a Profile variable
 	var profile Profile
@@ -162,7 +132,7 @@ func (m ProfileModel) Update(profile *Profile) error {
 	// SQL Update
 	query := `
         UPDATE profiles
-        SET profile_name = $1, profile_picture = $2, version = version + 1
+        SET profile_name_t = $1, profile_picture_s = $2, version = version + 1
         WHERE id = $3 AND version = $4
         RETURNING version`
 
@@ -188,9 +158,6 @@ func (m ProfileModel) Update(profile *Profile) error {
 			return err
 		}
 	}
-
-	// Send Data to Go Profile Indexing Service
-	go m.GRPCProfileIndexing(profile)
 
 	return nil
 }

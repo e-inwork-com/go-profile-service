@@ -36,7 +36,7 @@ services:
     networks:
       - network-local
     ports:
-      - "4000"
+      - "4001:4001"
     security_opt:
       - "seccomp:unconfined"
     environment:
@@ -49,14 +49,12 @@ services:
   profile-local:
     depends_on:
       - user-local
-    build:
-      context: .
-      dockerfile: Dockerfile.local
+    build: .
     hostname: go-profile-service
     networks:
       - network-local
     ports:
-      - "4001"
+      - "4002:4002"
     security_opt:
       - "seccomp:unconfined"
     volumes:
@@ -68,19 +66,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-
-  front-envoy-local:
-    depends_on:
-      - user-local
-      - profile-local
-    build:
-      context: .
-      dockerfile: Dockerfile.local.frontenvoy
-    networks:
-      - network-local
-    ports:
-      - "${PORT_PROXY:-8000}:8000"
-      - "${PORT_STATS:-8001}:8001"
 
 networks:
   network-local:
