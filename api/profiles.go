@@ -3,22 +3,23 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/e-inwork-com/go-profile-service/internal/data"
-	"github.com/e-inwork-com/go-profile-service/internal/validator"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/e-inwork-com/go-profile-service/internal/data"
+	"github.com/e-inwork-com/go-profile-service/internal/validator"
 )
 
 // Function to create a Profile
 func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Get a profile name
-	profileName := r.FormValue("profile_name")
+	profileName := r.FormValue("profile_name_t")
 
 	// Read a file attachment
-	file, fileHeader, err := r.FormFile("profile_picture")
+	file, fileHeader, err := r.FormFile("profile_picture_s")
 	if err == nil {
 		defer file.Close()
 	}
@@ -29,14 +30,14 @@ func (app *Application) createProfileHandler(w http.ResponseWriter, r *http.Requ
 	// Set profile picture
 	profilePicture := ""
 	if file != nil {
-		profilePicture = fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+		profilePicture = fmt.Sprintf("%s%s", user.ID.String(), filepath.Ext(fileHeader.Filename))
 	}
 
 	// Set Profile
 	profile := &data.Profile{
-		ProfileUser: 	user.ID,
-		ProfileName: 	profileName,
-		ProfilePicture:	profilePicture,
+		ProfileUser:    user.ID,
+		ProfileName:    profileName,
+		ProfilePicture: profilePicture,
 	}
 
 	// Validate Profile
@@ -169,10 +170,10 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get a profile name
-	profileName := r.FormValue("profile_name")
+	profileName := r.FormValue("profile_name_t")
 
 	// Read a file attachment
-	file, fileHeader, err := r.FormFile("profile_picture")
+	file, fileHeader, err := r.FormFile("profile_picture_s")
 	if err == nil {
 		defer file.Close()
 	}
@@ -180,13 +181,13 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 	// Set profile picture
 	profilePicture := ""
 	if file != nil {
-		profilePicture = fmt.Sprintf("%s%s",  user.ID.String(), filepath.Ext(fileHeader.Filename))
+		profilePicture = fmt.Sprintf("%s%s", user.ID.String(), filepath.Ext(fileHeader.Filename))
 	}
 
 	// Set a new Profile
 	newProfile := &data.Profile{
-		ProfileName: profileName,
-		ProfilePicture:	profilePicture,
+		ProfileName:    profileName,
+		ProfilePicture: profilePicture,
 	}
 
 	if profilePicture != "" {
@@ -272,7 +273,6 @@ func (app *Application) patchProfileHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 	}
 }
-
 
 // getProfilePictureHandler function to get a profile picture
 func (app *Application) getProfilePictureHandler(w http.ResponseWriter, r *http.Request) {

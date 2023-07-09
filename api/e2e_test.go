@@ -27,7 +27,6 @@ func TestE2E(t *testing.T) {
 	cfg.Limiter.Rps = 2
 	cfg.Limiter.Burst = 6
 	cfg.Uploads = "../local/test/uploads"
-	cfg.GRPCProfile = "localhost:5002"
 
 	// Logger
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
@@ -43,7 +42,7 @@ func TestE2E(t *testing.T) {
 	app := Application{
 		Config: cfg,
 		Logger: logger,
-		Models: data.InitModels(db, cfg.GRPCProfile),
+		Models: data.InitModels(db),
 	}
 
 	// API Routes
@@ -71,12 +70,12 @@ func TestE2E(t *testing.T) {
 
 	t.Run("Register User", func(t *testing.T) {
 		data := fmt.Sprintf(
-			`{"email": "%v", "password": "%v", "first_name": "Jon", "last_name": "Doe"}`,
+			`{"email_t": "%v", "password": "%v", "first_name_t": "Jon", "last_name_t": "Doe"}`,
 			email,
 			password)
 		req, _ := http.NewRequest(
 			"POST",
-			"http://localhost:8000/service/users",
+			"http://localhost:4001/service/users",
 			bytes.NewReader([]byte(data)))
 		req.Header.Add("Content-Type", "application/json")
 
@@ -101,12 +100,12 @@ func TestE2E(t *testing.T) {
 
 	t.Run("Login User", func(t *testing.T) {
 		data := fmt.Sprintf(
-			`{"email": "%v", "password": "%v"}`,
+			`{"email_t": "%v", "password": "%v"}`,
 			email,
 			password)
 		req, _ := http.NewRequest(
 			"POST",
-			"http://localhost:8000/service/users/authentication",
+			"http://localhost:4001/service/users/authentication",
 			bytes.NewReader([]byte(data)))
 		req.Header.Add("Content-Type", "application/json")
 

@@ -17,11 +17,11 @@ type UserModelInterface interface {
 
 type User struct {
 	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Email     string    `json:"email"`
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	Activated bool      `json:"activated"`
+	CreatedAt time.Time `json:"created_at_dt"`
+	Email     string    `json:"email_t"`
+	FirstName string    `json:"first_name_t"`
+	LastName  string    `json:"last_name_t"`
+	Activated bool      `json:"activated_b"`
 	Version   int       `json:"version"`
 }
 
@@ -35,7 +35,7 @@ func (u *User) IsAnonymous() bool {
 
 func (m UserModel) GetByID(id uuid.UUID) (*User, error) {
 	query := `
-        SELECT id, created_at, email, first_name, last_name, activated, version
+        SELECT id, created_at_dt, email_t, first_name_t, last_name_t, activated_b, version
         FROM users
         WHERE id = $1`
 

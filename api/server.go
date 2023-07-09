@@ -48,8 +48,7 @@ type Config struct {
 		TrustedOrigins []string
 	}
 
-	Uploads     string
-	GRPCProfile string
+	Uploads string
 }
 
 type Application struct {

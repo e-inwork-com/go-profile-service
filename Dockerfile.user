@@ -5,7 +5,7 @@ FROM golang:1.19-alpine
 RUN go install github.com/e-inwork-com/go-user-service/cmd@latest
 
 # Expose port
-EXPOSE 4000
+EXPOSE 4001
 
 # Run Go User Service
 CMD ["cmd"]
